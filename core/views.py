@@ -356,6 +356,65 @@ def gallery_image_delete(request, pk):
         )
 
     gallery_image.delete()
+    
+@api_view(["PUT", "PATCH"])
+@permission_classes([IsAuthenticated])
+def gallery_image_update(request, pk):
+    if not request.user.is_staff:
+        return Response(
+            {"message": "Accès refusé. Compte admin requis."},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+
+    try:
+        gallery_image = GalleryImage.objects.get(pk=pk)
+    except GalleryImage.DoesNotExist:
+        return Response(
+            {"message": "Image introuvable."},
+            status=status.HTTP_404_NOT_FOUND,
+        )
+
+    title = request.data.get("title", gallery_image.title)
+    description = request.data.get("description", gallery_image.description)
+    is_active = request.data.get("is_active", gallery_image.is_active)
+    image = request.FILES.get("image")
+
+    if not title:
+        return Response(
+            {"message": "Le titre de l'image est obligatoire."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    gallery_image.title = title
+    gallery_image.description = description
+
+    if image:
+        gallery_image.image = image
+
+    if isinstance(is_active, bool):
+        gallery_image.is_active = is_active
+    else:
+        gallery_image.is_active = str(is_active).lower() in [
+            "true",
+            "1",
+            "yes",
+            "on",
+        ]
+
+    gallery_image.save()
+
+    serializer = GalleryImageSerializer(
+        gallery_image,
+        context={"request": request},
+    )
+
+    return Response(
+        {
+            "message": "Image modifiée avec succès.",
+            "data": serializer.data,
+        },
+        status=status.HTTP_200_OK,
+    )
 @api_view(["GET"])
 def company_facts_list(request):
     company_facts = CompanyFact.objects.filter(is_active=True).order_by(

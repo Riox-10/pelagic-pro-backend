@@ -31,6 +31,11 @@ urlpatterns = [
         name="gallery-image-create",
     ),
     path(
+    "gallery-images/<int:pk>/update/",
+    views.gallery_image_update,
+    name="gallery-image-update",
+),
+    path(
         "gallery-images/<int:pk>/delete/",
         views.gallery_image_delete,
         name="gallery-image-delete",
