@@ -42,6 +42,8 @@ class Certificate(models.Model):
 
     def __str__(self):
         return self.name
+
+
 class GalleryImage(models.Model):
     title = models.CharField(max_length=150)
     image = models.ImageField(upload_to="gallery/")
@@ -54,3 +56,18 @@ class GalleryImage(models.Model):
 
     def __str__(self):
         return self.title
+
+
+class CompanyFact(models.Model):
+    label = models.CharField(max_length=150)
+    value = models.CharField(max_length=150)
+    description = models.TextField(blank=True)
+    order = models.PositiveIntegerField(default=0)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["order", "-created_at"]
+
+    def __str__(self):
+        return f"{self.label}: {self.value}"

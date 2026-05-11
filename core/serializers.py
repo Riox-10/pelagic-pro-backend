@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Product, Certificate, ContactMessage, GalleryImage
+from .models import Product, Certificate, ContactMessage, GalleryImage, CompanyFact
 
 
 class ContactMessageSerializer(serializers.ModelSerializer):
@@ -38,10 +38,13 @@ class ProductSerializer(serializers.ModelSerializer):
 
     def get_image(self, obj):
         request = self.context.get("request")
+
         if obj.image and request:
             return request.build_absolute_uri(obj.image.url)
+
         if obj.image:
             return obj.image.url
+
         return ""
 
 
@@ -60,10 +63,13 @@ class CertificateSerializer(serializers.ModelSerializer):
 
     def get_image(self, obj):
         request = self.context.get("request")
+
         if obj.image and request:
             return request.build_absolute_uri(obj.image.url)
+
         if obj.image:
             return obj.image.url
+
         return ""
 
 
@@ -83,8 +89,25 @@ class GalleryImageSerializer(serializers.ModelSerializer):
 
     def get_image(self, obj):
         request = self.context.get("request")
+
         if obj.image and request:
             return request.build_absolute_uri(obj.image.url)
+
         if obj.image:
             return obj.image.url
+
         return ""
+
+
+class CompanyFactSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CompanyFact
+        fields = [
+            "id",
+            "label",
+            "value",
+            "description",
+            "order",
+            "is_active",
+            "created_at",
+        ]

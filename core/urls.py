@@ -35,7 +35,22 @@ urlpatterns = [
         views.gallery_image_delete,
         name="gallery-image-delete",
     ),
-
+    path("company-facts/", views.company_facts_list, name="company-facts-list"),
+path(
+    "company-facts/create/",
+    views.company_fact_create,
+    name="company-fact-create",
+),
+path(
+    "company-facts/<int:pk>/update/",
+    views.company_fact_update,
+    name="company-fact-update",
+),
+path(
+    "company-facts/<int:pk>/delete/",
+    views.company_fact_delete,
+    name="company-fact-delete",
+),
     path("contact/", views.create_contact_message, name="contact-message"),
     path(
         "contact-messages/",
