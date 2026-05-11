@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import ContactMessage, Product, Certificate
+from .models import Product, Certificate, ContactMessage, GalleryImage
 
 
 class ContactMessageSerializer(serializers.ModelSerializer):
@@ -38,13 +38,10 @@ class ProductSerializer(serializers.ModelSerializer):
 
     def get_image(self, obj):
         request = self.context.get("request")
-
+        if obj.image and request:
+            return request.build_absolute_uri(obj.image.url)
         if obj.image:
-            image_url = obj.image.url
-            if request:
-                return request.build_absolute_uri(image_url)
-            return image_url
-
+            return obj.image.url
         return ""
 
 
@@ -63,11 +60,31 @@ class CertificateSerializer(serializers.ModelSerializer):
 
     def get_image(self, obj):
         request = self.context.get("request")
-
+        if obj.image and request:
+            return request.build_absolute_uri(obj.image.url)
         if obj.image:
-            image_url = obj.image.url
-            if request:
-                return request.build_absolute_uri(image_url)
-            return image_url
+            return obj.image.url
+        return ""
 
+
+class GalleryImageSerializer(serializers.ModelSerializer):
+    image = serializers.SerializerMethodField()
+
+    class Meta:
+        model = GalleryImage
+        fields = [
+            "id",
+            "title",
+            "image",
+            "description",
+            "is_active",
+            "created_at",
+        ]
+
+    def get_image(self, obj):
+        request = self.context.get("request")
+        if obj.image and request:
+            return request.build_absolute_uri(obj.image.url)
+        if obj.image:
+            return obj.image.url
         return ""

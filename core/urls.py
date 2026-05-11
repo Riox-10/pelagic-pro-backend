@@ -1,38 +1,49 @@
 from django.urls import path
-from .views import (
-    health_check,
-    products_list,
-    certificates_list,
-    create_contact_message,
-    contact_messages_list,
-    admin_login,
-    admin_me,
-    admin_logout,
-    create_product,
-    delete_product,
-    create_certificate,
-    delete_certificate,
-)
+from . import views
 
 urlpatterns = [
-    path("health/", health_check, name="health-check"),
+    path("health/", views.health_check, name="health-check"),
 
-    path("products/", products_list, name="products-list"),
-    path("products/create/", create_product, name="create-product"),
-    path("products/<int:product_id>/delete/", delete_product, name="delete-product"),
+    path("products/", views.products_list, name="products-list"),
+    path("products/create/", views.create_product, name="create-product"),
+    path(
+        "products/<int:product_id>/delete/",
+        views.delete_product,
+        name="delete-product",
+    ),
 
-    path("certificates/", certificates_list, name="certificates-list"),
-    path("certificates/create/", create_certificate, name="create-certificate"),
+    path("certificates/", views.certificates_list, name="certificates-list"),
+    path(
+        "certificates/create/",
+        views.create_certificate,
+        name="create-certificate",
+    ),
     path(
         "certificates/<int:certificate_id>/delete/",
-        delete_certificate,
+        views.delete_certificate,
         name="delete-certificate",
     ),
 
-    path("contact/", create_contact_message, name="create-contact-message"),
-    path("contact-messages/", contact_messages_list, name="contact-messages-list"),
+    path("gallery-images/", views.gallery_images_list, name="gallery-images-list"),
+    path(
+        "gallery-images/create/",
+        views.gallery_image_create,
+        name="gallery-image-create",
+    ),
+    path(
+        "gallery-images/<int:pk>/delete/",
+        views.gallery_image_delete,
+        name="gallery-image-delete",
+    ),
 
-    path("auth/login/", admin_login, name="admin-login"),
-    path("auth/me/", admin_me, name="admin-me"),
-    path("auth/logout/", admin_logout, name="admin-logout"),
+    path("contact/", views.create_contact_message, name="contact-message"),
+    path(
+        "contact-messages/",
+        views.contact_messages_list,
+        name="contact-messages-list",
+    ),
+
+    path("auth/login/", views.admin_login, name="admin-login"),
+    path("auth/me/", views.admin_me, name="admin-me"),
+    path("auth/logout/", views.admin_logout, name="admin-logout"),
 ]

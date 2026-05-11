@@ -6,11 +6,12 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from .models import ContactMessage, Product, Certificate
+from .models import Product, Certificate, ContactMessage, GalleryImage
 from .serializers import (
     ContactMessageSerializer,
     ProductSerializer,
     CertificateSerializer,
+    GalleryImageSerializer,
 )
 
 
@@ -44,6 +45,19 @@ def certificates_list(request):
     return Response(serializer.data)
 
 
+@api_view(["GET"])
+def gallery_images_list(request):
+    gallery_images = GalleryImage.objects.filter(is_active=True).order_by(
+        "-created_at"
+    )
+    serializer = GalleryImageSerializer(
+        gallery_images,
+        many=True,
+        context={"request": request},
+    )
+    return Response(serializer.data)
+
+
 @api_view(["POST"])
 def create_contact_message(request):
     serializer = ContactMessageSerializer(data=request.data)
@@ -70,6 +84,12 @@ def create_contact_message(request):
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def contact_messages_list(request):
+    if not request.user.is_staff:
+        return Response(
+            {"message": "Accès refusé. Compte admin requis."},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+
     messages = ContactMessage.objects.all().order_by("-created_at")
     serializer = ContactMessageSerializer(messages, many=True)
     return Response(serializer.data)
@@ -137,6 +157,12 @@ def admin_logout(request):
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def create_product(request):
+    if not request.user.is_staff:
+        return Response(
+            {"message": "Accès refusé. Compte admin requis."},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+
     name = request.data.get("name", "")
     brand = request.data.get("brand", "")
     category = request.data.get("category", "")
@@ -180,6 +206,12 @@ def create_product(request):
 @api_view(["DELETE"])
 @permission_classes([IsAuthenticated])
 def delete_product(request, product_id):
+    if not request.user.is_staff:
+        return Response(
+            {"message": "Accès refusé. Compte admin requis."},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+
     try:
         product = Product.objects.get(id=product_id)
     except Product.DoesNotExist:
@@ -198,6 +230,12 @@ def delete_product(request, product_id):
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def create_certificate(request):
+    if not request.user.is_staff:
+        return Response(
+            {"message": "Accès refusé. Compte admin requis."},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+
     name = request.data.get("name", "")
     alt = request.data.get("alt", "")
     image = request.FILES.get("image")
@@ -231,6 +269,12 @@ def create_certificate(request):
 @api_view(["DELETE"])
 @permission_classes([IsAuthenticated])
 def delete_certificate(request, certificate_id):
+    if not request.user.is_staff:
+        return Response(
+            {"message": "Accès refusé. Compte admin requis."},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+
     try:
         certificate = Certificate.objects.get(id=certificate_id)
     except Certificate.DoesNotExist:
@@ -243,4 +287,75 @@ def delete_certificate(request, certificate_id):
 
     return Response({
         "message": "Certificat supprimé avec succès."
+    })
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def gallery_image_create(request):
+    if not request.user.is_staff:
+        return Response(
+            {"message": "Accès refusé. Compte admin requis."},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+
+    title = request.data.get("title", "")
+    description = request.data.get("description", "")
+    is_active = request.data.get("is_active", "true")
+    image = request.FILES.get("image")
+
+    if not title:
+        return Response(
+            {"message": "Le titre de l'image est obligatoire."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    if not image:
+        return Response(
+            {"message": "L'image est obligatoire."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    gallery_image = GalleryImage.objects.create(
+        title=title,
+        description=description,
+        image=image,
+        is_active=str(is_active).lower() in ["true", "1", "yes", "on"],
+    )
+
+    serializer = GalleryImageSerializer(
+        gallery_image,
+        context={"request": request},
+    )
+
+    return Response(
+        {
+            "message": "Image ajoutée avec succès.",
+            "data": serializer.data,
+        },
+        status=status.HTTP_201_CREATED,
+    )
+
+
+@api_view(["DELETE"])
+@permission_classes([IsAuthenticated])
+def gallery_image_delete(request, pk):
+    if not request.user.is_staff:
+        return Response(
+            {"message": "Accès refusé. Compte admin requis."},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+
+    try:
+        gallery_image = GalleryImage.objects.get(pk=pk)
+    except GalleryImage.DoesNotExist:
+        return Response(
+            {"message": "Image introuvable."},
+            status=status.HTTP_404_NOT_FOUND,
+        )
+
+    gallery_image.delete()
+
+    return Response({
+        "message": "Image supprimée avec succès."
     })
