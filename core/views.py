@@ -6,13 +6,14 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from .models import Product, Certificate, ContactMessage, GalleryImage, CompanyFact
+from .models import Product, Certificate, ContactMessage, GalleryImage, CompanyFact, CompanyImage
 from .serializers import (
     ContactMessageSerializer,
     ProductSerializer,
     CertificateSerializer,
     GalleryImageSerializer,
     CompanyFactSerializer,
+    CompanyImageSerializer,
 )
 
 
@@ -632,6 +633,153 @@ def company_fact_delete(request, pk):
     return Response({
         "message": "Information supprimée avec succès."
     })
+
+    return Response({
+        "message": "Image supprimée avec succès."
+    })
+@api_view(["GET"])
+def company_images_list(request):
+    company_images = CompanyImage.objects.filter(is_active=True).order_by(
+        "order",
+        "-created_at",
+    )
+    serializer = CompanyImageSerializer(
+        company_images,
+        many=True,
+        context={"request": request},
+    )
+    return Response(serializer.data)
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def company_image_create(request):
+    if not request.user.is_staff:
+        return Response(
+            {"message": "Accès refusé. Compte admin requis."},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+
+    title = request.data.get("title", "")
+    alt = request.data.get("alt", "")
+    order = request.data.get("order", 0)
+    is_active = request.data.get("is_active", "true")
+    image = request.FILES.get("image")
+
+    if not title:
+        return Response(
+            {"message": "Le titre de l'image est obligatoire."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    if not image:
+        return Response(
+            {"message": "L'image est obligatoire."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    company_image = CompanyImage.objects.create(
+        title=title,
+        alt=alt,
+        order=order or 0,
+        image=image,
+        is_active=str(is_active).lower() in ["true", "1", "yes", "on"],
+    )
+
+    serializer = CompanyImageSerializer(
+        company_image,
+        context={"request": request},
+    )
+
+    return Response(
+        {
+            "message": "Image ajoutée avec succès.",
+            "data": serializer.data,
+        },
+        status=status.HTTP_201_CREATED,
+    )
+
+
+@api_view(["PUT", "PATCH"])
+@permission_classes([IsAuthenticated])
+def company_image_update(request, pk):
+    if not request.user.is_staff:
+        return Response(
+            {"message": "Accès refusé. Compte admin requis."},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+
+    try:
+        company_image = CompanyImage.objects.get(pk=pk)
+    except CompanyImage.DoesNotExist:
+        return Response(
+            {"message": "Image introuvable."},
+            status=status.HTTP_404_NOT_FOUND,
+        )
+
+    title = request.data.get("title", company_image.title)
+    alt = request.data.get("alt", company_image.alt)
+    order = request.data.get("order", company_image.order)
+    is_active = request.data.get("is_active", company_image.is_active)
+    image = request.FILES.get("image")
+
+    if not title:
+        return Response(
+            {"message": "Le titre de l'image est obligatoire."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    company_image.title = title
+    company_image.alt = alt
+    company_image.order = order or 0
+
+    if image:
+        company_image.image = image
+
+    if isinstance(is_active, bool):
+        company_image.is_active = is_active
+    else:
+        company_image.is_active = str(is_active).lower() in [
+            "true",
+            "1",
+            "yes",
+            "on",
+        ]
+
+    company_image.save()
+
+    serializer = CompanyImageSerializer(
+        company_image,
+        context={"request": request},
+    )
+
+    return Response(
+        {
+            "message": "Image modifiée avec succès.",
+            "data": serializer.data,
+        },
+        status=status.HTTP_200_OK,
+    )
+
+
+@api_view(["DELETE"])
+@permission_classes([IsAuthenticated])
+def company_image_delete(request, pk):
+    if not request.user.is_staff:
+        return Response(
+            {"message": "Accès refusé. Compte admin requis."},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+
+    try:
+        company_image = CompanyImage.objects.get(pk=pk)
+    except CompanyImage.DoesNotExist:
+        return Response(
+            {"message": "Image introuvable."},
+            status=status.HTTP_404_NOT_FOUND,
+        )
+
+    company_image.delete()
 
     return Response({
         "message": "Image supprimée avec succès."

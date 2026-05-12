@@ -7,9 +7,9 @@ urlpatterns = [
     path("products/", views.products_list, name="products-list"),
     path("products/create/", views.create_product, name="create-product"),
     path(
-    "products/<int:product_id>/update/",
-    views.update_product,
-    name="update-product",
+        "products/<int:product_id>/update/",
+        views.update_product,
+        name="update-product",
     ),
     path(
         "products/<int:product_id>/delete/",
@@ -24,10 +24,10 @@ urlpatterns = [
         name="create-certificate",
     ),
     path(
-    "certificates/<int:certificate_id>/update/",
-    views.update_certificate,
-    name="update-certificate",
-),
+        "certificates/<int:certificate_id>/update/",
+        views.update_certificate,
+        name="update-certificate",
+    ),
     path(
         "certificates/<int:certificate_id>/delete/",
         views.delete_certificate,
@@ -41,31 +41,50 @@ urlpatterns = [
         name="gallery-image-create",
     ),
     path(
-    "gallery-images/<int:pk>/update/",
-    views.gallery_image_update,
-    name="gallery-image-update",
-),
+        "gallery-images/<int:pk>/update/",
+        views.gallery_image_update,
+        name="gallery-image-update",
+    ),
     path(
         "gallery-images/<int:pk>/delete/",
         views.gallery_image_delete,
         name="gallery-image-delete",
     ),
+
+    path("company-images/", views.company_images_list, name="company-images-list"),
+    path(
+        "company-images/create/",
+        views.company_image_create,
+        name="company-image-create",
+    ),
+    path(
+        "company-images/<int:pk>/update/",
+        views.company_image_update,
+        name="company-image-update",
+    ),
+    path(
+        "company-images/<int:pk>/delete/",
+        views.company_image_delete,
+        name="company-image-delete",
+    ),
+
     path("company-facts/", views.company_facts_list, name="company-facts-list"),
-path(
-    "company-facts/create/",
-    views.company_fact_create,
-    name="company-fact-create",
-),
-path(
-    "company-facts/<int:pk>/update/",
-    views.company_fact_update,
-    name="company-fact-update",
-),
-path(
-    "company-facts/<int:pk>/delete/",
-    views.company_fact_delete,
-    name="company-fact-delete",
-),
+    path(
+        "company-facts/create/",
+        views.company_fact_create,
+        name="company-fact-create",
+    ),
+    path(
+        "company-facts/<int:pk>/update/",
+        views.company_fact_update,
+        name="company-fact-update",
+    ),
+    path(
+        "company-facts/<int:pk>/delete/",
+        views.company_fact_delete,
+        name="company-fact-delete",
+    ),
+
     path("contact/", views.create_contact_message, name="contact-message"),
     path(
         "contact-messages/",

@@ -1,8 +1,7 @@
 # Register your models here.
 
 from django.contrib import admin
-from .models import Product, Certificate, ContactMessage, GalleryImage, CompanyFact
-
+from .models import Product, Certificate, ContactMessage, GalleryImage, CompanyFact, CompanyImage
 
 @admin.register(ContactMessage)
 class ContactMessageAdmin(admin.ModelAdmin):
@@ -28,4 +27,10 @@ class CompanyFactAdmin(admin.ModelAdmin):
     list_display = ("label", "value", "order", "is_active", "created_at")
     list_filter = ("is_active", "created_at")
     search_fields = ("label", "value", "description")
+    ordering = ("order", "-created_at")
+@admin.register(CompanyImage)
+class CompanyImageAdmin(admin.ModelAdmin):
+    list_display = ("title", "order", "is_active", "created_at")
+    list_filter = ("is_active", "created_at")
+    search_fields = ("title", "alt")
     ordering = ("order", "-created_at")

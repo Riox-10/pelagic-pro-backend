@@ -1,6 +1,5 @@
 from rest_framework import serializers
-from .models import Product, Certificate, ContactMessage, GalleryImage, CompanyFact
-
+from .models import Product, Certificate, ContactMessage, GalleryImage, CompanyFact, CompanyImage
 
 class ContactMessageSerializer(serializers.ModelSerializer):
     class Meta:
@@ -111,3 +110,28 @@ class CompanyFactSerializer(serializers.ModelSerializer):
             "is_active",
             "created_at",
         ]
+class CompanyImageSerializer(serializers.ModelSerializer):
+    image = serializers.SerializerMethodField()
+
+    class Meta:
+        model = CompanyImage
+        fields = [
+            "id",
+            "title",
+            "image",
+            "alt",
+            "order",
+            "is_active",
+            "created_at",
+        ]
+
+    def get_image(self, obj):
+        request = self.context.get("request")
+
+        if obj.image and request:
+            return request.build_absolute_uri(obj.image.url)
+
+        if obj.image:
+            return obj.image.url
+
+        return ""
