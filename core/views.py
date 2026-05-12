@@ -265,8 +265,53 @@ def create_certificate(request):
         },
         status=status.HTTP_201_CREATED,
     )
+@api_view(["PUT", "PATCH"])
+@permission_classes([IsAuthenticated])
+def update_certificate(request, certificate_id):
+    if not request.user.is_staff:
+        return Response(
+            {"message": "Accès refusé. Compte admin requis."},
+            status=status.HTTP_403_FORBIDDEN,
+        )
 
+    try:
+        certificate = Certificate.objects.get(id=certificate_id)
+    except Certificate.DoesNotExist:
+        return Response(
+            {"message": "Certificat introuvable."},
+            status=status.HTTP_404_NOT_FOUND,
+        )
 
+    name = request.data.get("name", certificate.name)
+    alt = request.data.get("alt", certificate.alt)
+    image = request.FILES.get("image")
+
+    if not name:
+        return Response(
+            {"message": "Le nom du certificat est obligatoire."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    certificate.name = name
+    certificate.alt = alt
+
+    if image:
+        certificate.image = image
+
+    certificate.save()
+
+    serializer = CertificateSerializer(
+        certificate,
+        context={"request": request},
+    )
+
+    return Response(
+        {
+            "message": "Certificat modifié avec succès.",
+            "data": serializer.data,
+        },
+        status=status.HTTP_200_OK,
+    )
 @api_view(["DELETE"])
 @permission_classes([IsAuthenticated])
 def delete_certificate(request, certificate_id):
@@ -356,7 +401,7 @@ def gallery_image_delete(request, pk):
         )
 
     gallery_image.delete()
-    
+
 @api_view(["PUT", "PATCH"])
 @permission_classes([IsAuthenticated])
 def gallery_image_update(request, pk):

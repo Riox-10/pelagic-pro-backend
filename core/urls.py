@@ -19,6 +19,11 @@ urlpatterns = [
         name="create-certificate",
     ),
     path(
+    "certificates/<int:certificate_id>/update/",
+    views.update_certificate,
+    name="update-certificate",
+),
+    path(
         "certificates/<int:certificate_id>/delete/",
         views.delete_certificate,
         name="delete-certificate",
