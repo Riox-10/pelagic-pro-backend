@@ -202,8 +202,72 @@ def create_product(request):
         },
         status=status.HTTP_201_CREATED,
     )
+@api_view(["PUT", "PATCH"])
+@permission_classes([IsAuthenticated])
+def update_product(request, product_id):
+    if not request.user.is_staff:
+        return Response(
+            {"message": "Accès refusé. Compte admin requis."},
+            status=status.HTTP_403_FORBIDDEN,
+        )
 
+    try:
+        product = Product.objects.get(id=product_id)
+    except Product.DoesNotExist:
+        return Response(
+            {"message": "Produit introuvable."},
+            status=status.HTTP_404_NOT_FOUND,
+        )
 
+    name = request.data.get("name", product.name)
+    brand = request.data.get("brand", product.brand)
+    category = request.data.get("category", product.category)
+    weight = request.data.get("weight", product.weight)
+    packaging = request.data.get("packaging", product.packaging)
+    description = request.data.get("description", product.description)
+    is_active = request.data.get("is_active", product.is_active)
+    image = request.FILES.get("image")
+
+    if not name or not brand or not category:
+        return Response(
+            {"message": "Name, brand et category sont obligatoires."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    product.name = name
+    product.brand = brand
+    product.category = category
+    product.weight = weight
+    product.packaging = packaging
+    product.description = description
+
+    if image:
+        product.image = image
+
+    if isinstance(is_active, bool):
+        product.is_active = is_active
+    else:
+        product.is_active = str(is_active).lower() in [
+            "true",
+            "1",
+            "yes",
+            "on",
+        ]
+
+    product.save()
+
+    serializer = ProductSerializer(
+        product,
+        context={"request": request},
+    )
+
+    return Response(
+        {
+            "message": "Produit modifié avec succès.",
+            "data": serializer.data,
+        },
+        status=status.HTTP_200_OK,
+    )
 @api_view(["DELETE"])
 @permission_classes([IsAuthenticated])
 def delete_product(request, product_id):
