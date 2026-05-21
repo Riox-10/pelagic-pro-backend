@@ -1,4 +1,6 @@
 from django.contrib.auth import authenticate
+from django.conf import settings
+from django.core.mail import EmailMessage
 
 from rest_framework import status
 from rest_framework.authtoken.models import Token
@@ -6,7 +8,14 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from .models import Product, Certificate, ContactMessage, GalleryImage, CompanyFact, CompanyImage
+from .models import (
+    Product,
+    Certificate,
+    ContactMessage,
+    GalleryImage,
+    CompanyFact,
+    CompanyImage,
+)
 from .serializers import (
     ContactMessageSerializer,
     ProductSerializer,
@@ -65,11 +74,53 @@ def create_contact_message(request):
     serializer = ContactMessageSerializer(data=request.data)
 
     if serializer.is_valid():
-        serializer.save()
+        contact_message = serializer.save()
+        email_sent = False
+
+        try:
+            email_subject = f"Nouveau message contact - {contact_message.subject}"
+
+            email_body = f"""
+Nouveau message reçu depuis le site web PELAGIC PRO.
+
+Nom complet :
+{contact_message.full_name}
+
+Email :
+{contact_message.email}
+
+Téléphone :
+{contact_message.phone or "Non renseigné"}
+
+Sujet :
+{contact_message.subject}
+
+Message :
+{contact_message.message}
+
+Date :
+{contact_message.created_at}
+"""
+
+            email = EmailMessage(
+                subject=email_subject,
+                body=email_body,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                to=[settings.COMPANY_CONTACT_EMAIL],
+                reply_to=[contact_message.email],
+            )
+
+            email.send(fail_silently=False)
+            email_sent = True
+
+        except Exception as error:
+            print(f"Erreur envoi email contact: {error}")
+
         return Response(
             {
                 "message": "Message envoyé avec succès.",
-                "data": serializer.data,
+                "email_sent": email_sent,
+                "data": ContactMessageSerializer(contact_message).data,
             },
             status=status.HTTP_201_CREATED,
         )
@@ -203,6 +254,8 @@ def create_product(request):
         },
         status=status.HTTP_201_CREATED,
     )
+
+
 @api_view(["PUT", "PATCH"])
 @permission_classes([IsAuthenticated])
 def update_product(request, product_id):
@@ -269,6 +322,8 @@ def update_product(request, product_id):
         },
         status=status.HTTP_200_OK,
     )
+
+
 @api_view(["DELETE"])
 @permission_classes([IsAuthenticated])
 def delete_product(request, product_id):
@@ -330,6 +385,8 @@ def create_certificate(request):
         },
         status=status.HTTP_201_CREATED,
     )
+
+
 @api_view(["PUT", "PATCH"])
 @permission_classes([IsAuthenticated])
 def update_certificate(request, certificate_id):
@@ -377,6 +434,8 @@ def update_certificate(request, certificate_id):
         },
         status=status.HTTP_200_OK,
     )
+
+
 @api_view(["DELETE"])
 @permission_classes([IsAuthenticated])
 def delete_certificate(request, certificate_id):
@@ -467,6 +526,11 @@ def gallery_image_delete(request, pk):
 
     gallery_image.delete()
 
+    return Response({
+        "message": "Image supprimée avec succès."
+    })
+
+
 @api_view(["PUT", "PATCH"])
 @permission_classes([IsAuthenticated])
 def gallery_image_update(request, pk):
@@ -525,6 +589,8 @@ def gallery_image_update(request, pk):
         },
         status=status.HTTP_200_OK,
     )
+
+
 @api_view(["GET"])
 def company_facts_list(request):
     company_facts = CompanyFact.objects.filter(is_active=True).order_by(
@@ -634,9 +700,7 @@ def company_fact_delete(request, pk):
         "message": "Information supprimée avec succès."
     })
 
-    return Response({
-        "message": "Image supprimée avec succès."
-    })
+
 @api_view(["GET"])
 def company_images_list(request):
     company_images = CompanyImage.objects.filter(is_active=True).order_by(
