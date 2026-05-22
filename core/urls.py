@@ -85,6 +85,33 @@ urlpatterns = [
         name="company-fact-delete",
     ),
 
+    # Catalogue PDF
+    path(
+        "catalogue/latest/",
+        views.latest_catalogue_file,
+        name="latest-catalogue-file",
+    ),
+    path(
+        "catalogue/",
+        views.catalogue_files_list,
+        name="catalogue-files-list",
+    ),
+    path(
+        "catalogue/create/",
+        views.catalogue_file_create,
+        name="catalogue-file-create",
+    ),
+    path(
+        "catalogue/<int:pk>/update/",
+        views.catalogue_file_update,
+        name="catalogue-file-update",
+    ),
+    path(
+        "catalogue/<int:pk>/delete/",
+        views.catalogue_file_delete,
+        name="catalogue-file-delete",
+    ),
+
     path("contact/", views.create_contact_message, name="contact-message"),
     path(
         "contact-messages/",

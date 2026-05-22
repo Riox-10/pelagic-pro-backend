@@ -15,7 +15,9 @@ from .models import (
     GalleryImage,
     CompanyFact,
     CompanyImage,
+    CatalogueFile,
 )
+
 from .serializers import (
     ContactMessageSerializer,
     ProductSerializer,
@@ -23,7 +25,22 @@ from .serializers import (
     GalleryImageSerializer,
     CompanyFactSerializer,
     CompanyImageSerializer,
+    CatalogueFileSerializer,
 )
+
+
+def is_admin_user(request):
+    return request.user.is_authenticated and request.user.is_staff
+
+
+def parse_boolean(value, default=True):
+    if isinstance(value, bool):
+        return value
+
+    if value is None:
+        return default
+
+    return str(value).lower() in ["true", "1", "yes", "on"]
 
 
 @api_view(["GET"])
@@ -68,6 +85,183 @@ def gallery_images_list(request):
     )
     return Response(serializer.data)
 
+
+# =========================
+# Catalogue PDF
+# =========================
+
+@api_view(["GET"])
+def latest_catalogue_file(request):
+    catalogue = CatalogueFile.objects.filter(is_active=True).order_by(
+        "-created_at"
+    ).first()
+
+    if not catalogue:
+        return Response(
+            {
+                "message": "Aucun catalogue disponible.",
+                "data": None,
+            },
+            status=status.HTTP_200_OK,
+        )
+
+    serializer = CatalogueFileSerializer(
+        catalogue,
+        context={"request": request},
+    )
+
+    return Response(serializer.data)
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def catalogue_files_list(request):
+    if not is_admin_user(request):
+        return Response(
+            {"message": "Accès refusé. Compte admin requis."},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+
+    catalogues = CatalogueFile.objects.all().order_by("-created_at")
+    serializer = CatalogueFileSerializer(
+        catalogues,
+        many=True,
+        context={"request": request},
+    )
+
+    return Response(serializer.data)
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def catalogue_file_create(request):
+    if not is_admin_user(request):
+        return Response(
+            {"message": "Accès refusé. Compte admin requis."},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+
+    title = request.data.get("title", "Catalogue PELAGIC PRO")
+    is_active = parse_boolean(request.data.get("is_active"), True)
+    file = request.FILES.get("file")
+
+    if not file:
+        return Response(
+            {"message": "Le fichier PDF du catalogue est obligatoire."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    if not file.name.lower().endswith(".pdf"):
+        return Response(
+            {"message": "Le catalogue doit être un fichier PDF."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    if is_active:
+        CatalogueFile.objects.update(is_active=False)
+
+    catalogue = CatalogueFile.objects.create(
+        title=title or "Catalogue PELAGIC PRO",
+        file=file,
+        is_active=is_active,
+    )
+
+    serializer = CatalogueFileSerializer(
+        catalogue,
+        context={"request": request},
+    )
+
+    return Response(
+        {
+            "message": "Catalogue ajouté avec succès.",
+            "data": serializer.data,
+        },
+        status=status.HTTP_201_CREATED,
+    )
+
+
+@api_view(["PUT", "PATCH"])
+@permission_classes([IsAuthenticated])
+def catalogue_file_update(request, pk):
+    if not is_admin_user(request):
+        return Response(
+            {"message": "Accès refusé. Compte admin requis."},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+
+    try:
+        catalogue = CatalogueFile.objects.get(pk=pk)
+    except CatalogueFile.DoesNotExist:
+        return Response(
+            {"message": "Catalogue introuvable."},
+            status=status.HTTP_404_NOT_FOUND,
+        )
+
+    title = request.data.get("title", catalogue.title)
+    is_active = request.data.get("is_active", catalogue.is_active)
+    file = request.FILES.get("file")
+
+    catalogue.title = title or "Catalogue PELAGIC PRO"
+
+    parsed_is_active = parse_boolean(is_active, catalogue.is_active)
+
+    if parsed_is_active:
+        CatalogueFile.objects.exclude(pk=catalogue.pk).update(is_active=False)
+
+    catalogue.is_active = parsed_is_active
+
+    if file:
+        if not file.name.lower().endswith(".pdf"):
+            return Response(
+                {"message": "Le catalogue doit être un fichier PDF."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        catalogue.file = file
+
+    catalogue.save()
+
+    serializer = CatalogueFileSerializer(
+        catalogue,
+        context={"request": request},
+    )
+
+    return Response(
+        {
+            "message": "Catalogue modifié avec succès.",
+            "data": serializer.data,
+        },
+        status=status.HTTP_200_OK,
+    )
+
+
+@api_view(["DELETE"])
+@permission_classes([IsAuthenticated])
+def catalogue_file_delete(request, pk):
+    if not is_admin_user(request):
+        return Response(
+            {"message": "Accès refusé. Compte admin requis."},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+
+    try:
+        catalogue = CatalogueFile.objects.get(pk=pk)
+    except CatalogueFile.DoesNotExist:
+        return Response(
+            {"message": "Catalogue introuvable."},
+            status=status.HTTP_404_NOT_FOUND,
+        )
+
+    catalogue.delete()
+
+    return Response({
+        "message": "Catalogue supprimé avec succès."
+    })
+
+
+# =========================
+# Contact
+# =========================
 
 @api_view(["POST"])
 def create_contact_message(request):
@@ -137,7 +331,7 @@ Date :
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def contact_messages_list(request):
-    if not request.user.is_staff:
+    if not is_admin_user(request):
         return Response(
             {"message": "Accès refusé. Compte admin requis."},
             status=status.HTTP_403_FORBIDDEN,
@@ -147,6 +341,10 @@ def contact_messages_list(request):
     serializer = ContactMessageSerializer(messages, many=True)
     return Response(serializer.data)
 
+
+# =========================
+# Admin auth
+# =========================
 
 @api_view(["POST"])
 def admin_login(request):
@@ -207,10 +405,14 @@ def admin_logout(request):
     })
 
 
+# =========================
+# Products
+# =========================
+
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def create_product(request):
-    if not request.user.is_staff:
+    if not is_admin_user(request):
         return Response(
             {"message": "Accès refusé. Compte admin requis."},
             status=status.HTTP_403_FORBIDDEN,
@@ -239,7 +441,7 @@ def create_product(request):
         packaging=packaging,
         description=description,
         image=image,
-        is_active=str(is_active).lower() in ["true", "1", "yes", "on"],
+        is_active=parse_boolean(is_active, True),
     )
 
     serializer = ProductSerializer(
@@ -259,7 +461,7 @@ def create_product(request):
 @api_view(["PUT", "PATCH"])
 @permission_classes([IsAuthenticated])
 def update_product(request, product_id):
-    if not request.user.is_staff:
+    if not is_admin_user(request):
         return Response(
             {"message": "Accès refusé. Compte admin requis."},
             status=status.HTTP_403_FORBIDDEN,
@@ -298,16 +500,7 @@ def update_product(request, product_id):
     if image:
         product.image = image
 
-    if isinstance(is_active, bool):
-        product.is_active = is_active
-    else:
-        product.is_active = str(is_active).lower() in [
-            "true",
-            "1",
-            "yes",
-            "on",
-        ]
-
+    product.is_active = parse_boolean(is_active, product.is_active)
     product.save()
 
     serializer = ProductSerializer(
@@ -327,7 +520,7 @@ def update_product(request, product_id):
 @api_view(["DELETE"])
 @permission_classes([IsAuthenticated])
 def delete_product(request, product_id):
-    if not request.user.is_staff:
+    if not is_admin_user(request):
         return Response(
             {"message": "Accès refusé. Compte admin requis."},
             status=status.HTTP_403_FORBIDDEN,
@@ -348,10 +541,14 @@ def delete_product(request, product_id):
     })
 
 
+# =========================
+# Certificates
+# =========================
+
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def create_certificate(request):
-    if not request.user.is_staff:
+    if not is_admin_user(request):
         return Response(
             {"message": "Accès refusé. Compte admin requis."},
             status=status.HTTP_403_FORBIDDEN,
@@ -390,7 +587,7 @@ def create_certificate(request):
 @api_view(["PUT", "PATCH"])
 @permission_classes([IsAuthenticated])
 def update_certificate(request, certificate_id):
-    if not request.user.is_staff:
+    if not is_admin_user(request):
         return Response(
             {"message": "Accès refusé. Compte admin requis."},
             status=status.HTTP_403_FORBIDDEN,
@@ -439,7 +636,7 @@ def update_certificate(request, certificate_id):
 @api_view(["DELETE"])
 @permission_classes([IsAuthenticated])
 def delete_certificate(request, certificate_id):
-    if not request.user.is_staff:
+    if not is_admin_user(request):
         return Response(
             {"message": "Accès refusé. Compte admin requis."},
             status=status.HTTP_403_FORBIDDEN,
@@ -460,10 +657,14 @@ def delete_certificate(request, certificate_id):
     })
 
 
+# =========================
+# Gallery
+# =========================
+
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def gallery_image_create(request):
-    if not request.user.is_staff:
+    if not is_admin_user(request):
         return Response(
             {"message": "Accès refusé. Compte admin requis."},
             status=status.HTTP_403_FORBIDDEN,
@@ -490,7 +691,7 @@ def gallery_image_create(request):
         title=title,
         description=description,
         image=image,
-        is_active=str(is_active).lower() in ["true", "1", "yes", "on"],
+        is_active=parse_boolean(is_active, True),
     )
 
     serializer = GalleryImageSerializer(
@@ -510,7 +711,7 @@ def gallery_image_create(request):
 @api_view(["DELETE"])
 @permission_classes([IsAuthenticated])
 def gallery_image_delete(request, pk):
-    if not request.user.is_staff:
+    if not is_admin_user(request):
         return Response(
             {"message": "Accès refusé. Compte admin requis."},
             status=status.HTTP_403_FORBIDDEN,
@@ -534,7 +735,7 @@ def gallery_image_delete(request, pk):
 @api_view(["PUT", "PATCH"])
 @permission_classes([IsAuthenticated])
 def gallery_image_update(request, pk):
-    if not request.user.is_staff:
+    if not is_admin_user(request):
         return Response(
             {"message": "Accès refusé. Compte admin requis."},
             status=status.HTTP_403_FORBIDDEN,
@@ -565,16 +766,7 @@ def gallery_image_update(request, pk):
     if image:
         gallery_image.image = image
 
-    if isinstance(is_active, bool):
-        gallery_image.is_active = is_active
-    else:
-        gallery_image.is_active = str(is_active).lower() in [
-            "true",
-            "1",
-            "yes",
-            "on",
-        ]
-
+    gallery_image.is_active = parse_boolean(is_active, gallery_image.is_active)
     gallery_image.save()
 
     serializer = GalleryImageSerializer(
@@ -591,6 +783,10 @@ def gallery_image_update(request, pk):
     )
 
 
+# =========================
+# Company facts
+# =========================
+
 @api_view(["GET"])
 def company_facts_list(request):
     company_facts = CompanyFact.objects.filter(is_active=True).order_by(
@@ -604,7 +800,7 @@ def company_facts_list(request):
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def company_fact_create(request):
-    if not request.user.is_staff:
+    if not is_admin_user(request):
         return Response(
             {"message": "Accès refusé. Compte admin requis."},
             status=status.HTTP_403_FORBIDDEN,
@@ -627,7 +823,7 @@ def company_fact_create(request):
         value=value,
         description=description,
         order=order or 0,
-        is_active=str(is_active).lower() in ["true", "1", "yes", "on"],
+        is_active=parse_boolean(is_active, True),
     )
 
     serializer = CompanyFactSerializer(company_fact)
@@ -644,7 +840,7 @@ def company_fact_create(request):
 @api_view(["PUT", "PATCH"])
 @permission_classes([IsAuthenticated])
 def company_fact_update(request, pk):
-    if not request.user.is_staff:
+    if not is_admin_user(request):
         return Response(
             {"message": "Accès refusé. Compte admin requis."},
             status=status.HTTP_403_FORBIDDEN,
@@ -680,7 +876,7 @@ def company_fact_update(request, pk):
 @api_view(["DELETE"])
 @permission_classes([IsAuthenticated])
 def company_fact_delete(request, pk):
-    if not request.user.is_staff:
+    if not is_admin_user(request):
         return Response(
             {"message": "Accès refusé. Compte admin requis."},
             status=status.HTTP_403_FORBIDDEN,
@@ -701,6 +897,10 @@ def company_fact_delete(request, pk):
     })
 
 
+# =========================
+# Company images
+# =========================
+
 @api_view(["GET"])
 def company_images_list(request):
     company_images = CompanyImage.objects.filter(is_active=True).order_by(
@@ -718,7 +918,7 @@ def company_images_list(request):
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def company_image_create(request):
-    if not request.user.is_staff:
+    if not is_admin_user(request):
         return Response(
             {"message": "Accès refusé. Compte admin requis."},
             status=status.HTTP_403_FORBIDDEN,
@@ -747,7 +947,7 @@ def company_image_create(request):
         alt=alt,
         order=order or 0,
         image=image,
-        is_active=str(is_active).lower() in ["true", "1", "yes", "on"],
+        is_active=parse_boolean(is_active, True),
     )
 
     serializer = CompanyImageSerializer(
@@ -767,7 +967,7 @@ def company_image_create(request):
 @api_view(["PUT", "PATCH"])
 @permission_classes([IsAuthenticated])
 def company_image_update(request, pk):
-    if not request.user.is_staff:
+    if not is_admin_user(request):
         return Response(
             {"message": "Accès refusé. Compte admin requis."},
             status=status.HTTP_403_FORBIDDEN,
@@ -800,16 +1000,7 @@ def company_image_update(request, pk):
     if image:
         company_image.image = image
 
-    if isinstance(is_active, bool):
-        company_image.is_active = is_active
-    else:
-        company_image.is_active = str(is_active).lower() in [
-            "true",
-            "1",
-            "yes",
-            "on",
-        ]
-
+    company_image.is_active = parse_boolean(is_active, company_image.is_active)
     company_image.save()
 
     serializer = CompanyImageSerializer(
@@ -829,7 +1020,7 @@ def company_image_update(request, pk):
 @api_view(["DELETE"])
 @permission_classes([IsAuthenticated])
 def company_image_delete(request, pk):
-    if not request.user.is_staff:
+    if not is_admin_user(request):
         return Response(
             {"message": "Accès refusé. Compte admin requis."},
             status=status.HTTP_403_FORBIDDEN,

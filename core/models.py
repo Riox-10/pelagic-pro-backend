@@ -71,6 +71,8 @@ class CompanyFact(models.Model):
 
     def __str__(self):
         return f"{self.label}: {self.value}"
+
+
 class CompanyImage(models.Model):
     title = models.CharField(max_length=150)
     image = models.ImageField(upload_to="company/")
@@ -81,6 +83,19 @@ class CompanyImage(models.Model):
 
     class Meta:
         ordering = ["order", "-created_at"]
+
+    def __str__(self):
+        return self.title
+
+
+class CatalogueFile(models.Model):
+    title = models.CharField(max_length=150, default="Catalogue PELAGIC PRO")
+    file = models.FileField(upload_to="catalogues/")
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
 
     def __str__(self):
         return self.title

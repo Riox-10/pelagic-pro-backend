@@ -1,5 +1,15 @@
 from rest_framework import serializers
-from .models import Product, Certificate, ContactMessage, GalleryImage, CompanyFact, CompanyImage
+
+from .models import (
+    Product,
+    Certificate,
+    ContactMessage,
+    GalleryImage,
+    CompanyFact,
+    CompanyImage,
+    CatalogueFile,
+)
+
 
 class ContactMessageSerializer(serializers.ModelSerializer):
     class Meta:
@@ -110,6 +120,8 @@ class CompanyFactSerializer(serializers.ModelSerializer):
             "is_active",
             "created_at",
         ]
+
+
 class CompanyImageSerializer(serializers.ModelSerializer):
     image = serializers.SerializerMethodField()
 
@@ -133,5 +145,30 @@ class CompanyImageSerializer(serializers.ModelSerializer):
 
         if obj.image:
             return obj.image.url
+
+        return ""
+
+
+class CatalogueFileSerializer(serializers.ModelSerializer):
+    file = serializers.SerializerMethodField()
+
+    class Meta:
+        model = CatalogueFile
+        fields = [
+            "id",
+            "title",
+            "file",
+            "is_active",
+            "created_at",
+        ]
+
+    def get_file(self, obj):
+        request = self.context.get("request")
+
+        if obj.file and request:
+            return request.build_absolute_uri(obj.file.url)
+
+        if obj.file:
+            return obj.file.url
 
         return ""
