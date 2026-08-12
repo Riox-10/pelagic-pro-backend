@@ -118,6 +118,35 @@ urlpatterns = [
         views.contact_messages_list,
         name="contact-messages-list",
     ),
+        # =========================
+    # Hero Media
+    # =========================
+
+    path(
+        "hero-media/",
+        views.hero_media_list,
+        name="hero-media-list",
+    ),
+    path(
+        "admin/hero-media/",
+        views.admin_hero_media_list,
+        name="admin-hero-media-list",
+    ),
+    path(
+        "hero-media/create/",
+        views.hero_media_create,
+        name="hero-media-create",
+    ),
+    path(
+        "hero-media/<int:pk>/update/",
+        views.hero_media_update,
+        name="hero-media-update",
+    ),
+    path(
+        "hero-media/<int:pk>/delete/",
+        views.hero_media_delete,
+        name="hero-media-delete",
+    ),
 
     path("auth/login/", views.admin_login, name="admin-login"),
     path("auth/me/", views.admin_me, name="admin-me"),

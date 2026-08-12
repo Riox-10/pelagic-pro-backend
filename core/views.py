@@ -16,6 +16,7 @@ from .models import (
     CompanyFact,
     CompanyImage,
     CatalogueFile,
+    HeroMedia,
 )
 
 from .serializers import (
@@ -26,6 +27,7 @@ from .serializers import (
     CompanyFactSerializer,
     CompanyImageSerializer,
     CatalogueFileSerializer,
+    HeroMediaSerializer,
 )
 
 
@@ -1039,3 +1041,316 @@ def company_image_delete(request, pk):
     return Response({
         "message": "Image supprimée avec succès."
     })
+# =========================
+# Hero Media
+# =========================
+
+@api_view(["GET"])
+def hero_media_list(request):
+    hero_media = HeroMedia.objects.filter(
+        is_active=True
+    ).order_by(
+        "order",
+        "-created_at",
+    )
+
+    serializer = HeroMediaSerializer(
+        hero_media,
+        many=True,
+        context={"request": request},
+    )
+
+    return Response(serializer.data)
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def admin_hero_media_list(request):
+    if not is_admin_user(request):
+        return Response(
+            {"message": "Accès refusé. Compte admin requis."},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+
+    hero_media = HeroMedia.objects.all().order_by(
+        "order",
+        "-created_at",
+    )
+
+    serializer = HeroMediaSerializer(
+        hero_media,
+        many=True,
+        context={"request": request},
+    )
+
+    return Response(serializer.data)
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def hero_media_create(request):
+    if not is_admin_user(request):
+        return Response(
+            {"message": "Accès refusé. Compte admin requis."},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+
+    title = request.data.get("title", "")
+    media_type = request.data.get("media_type", "")
+    order = request.data.get("order", 0)
+    is_active = request.data.get("is_active", "true")
+
+    image = request.FILES.get("image")
+    video = request.FILES.get("video")
+
+    if not title:
+        return Response(
+            {"message": "Le titre est obligatoire."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    if media_type not in ["image", "video"]:
+        return Response(
+            {
+                "message": (
+                    "media_type doit être 'image' ou 'video'."
+                )
+            },
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    if media_type == "image":
+        if not image:
+            return Response(
+                {"message": "L'image est obligatoire."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        allowed_extensions = [
+            ".jpg",
+            ".jpeg",
+            ".png",
+            ".webp",
+        ]
+
+        filename = image.name.lower()
+
+        if not any(
+            filename.endswith(extension)
+            for extension in allowed_extensions
+        ):
+            return Response(
+                {
+                    "message": (
+                        "Format image invalide. "
+                        "Formats acceptés: JPG, JPEG, PNG, WEBP."
+                    )
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+    if media_type == "video":
+        if not video:
+            return Response(
+                {"message": "La vidéo est obligatoire."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        allowed_extensions = [
+            ".mp4",
+            ".webm",
+            ".mov",
+        ]
+
+        filename = video.name.lower()
+
+        if not any(
+            filename.endswith(extension)
+            for extension in allowed_extensions
+        ):
+            return Response(
+                {
+                    "message": (
+                        "Format vidéo invalide. "
+                        "Formats acceptés: MP4, WEBM, MOV."
+                    )
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+    hero_media = HeroMedia.objects.create(
+        title=title,
+        media_type=media_type,
+        image=image if media_type == "image" else None,
+        video=video if media_type == "video" else None,
+        order=order or 0,
+        is_active=parse_boolean(is_active, True),
+    )
+
+    serializer = HeroMediaSerializer(
+        hero_media,
+        context={"request": request},
+    )
+
+    return Response(
+        {
+            "message": "Média Hero ajouté avec succès.",
+            "data": serializer.data,
+        },
+        status=status.HTTP_201_CREATED,
+    )
+
+
+@api_view(["PUT", "PATCH"])
+@permission_classes([IsAuthenticated])
+def hero_media_update(request, pk):
+    if not is_admin_user(request):
+        return Response(
+            {"message": "Accès refusé. Compte admin requis."},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+
+    try:
+        hero_media = HeroMedia.objects.get(pk=pk)
+    except HeroMedia.DoesNotExist:
+        return Response(
+            {"message": "Média Hero introuvable."},
+            status=status.HTTP_404_NOT_FOUND,
+        )
+
+    title = request.data.get(
+        "title",
+        hero_media.title,
+    )
+
+    media_type = request.data.get(
+        "media_type",
+        hero_media.media_type,
+    )
+
+    order = request.data.get(
+        "order",
+        hero_media.order,
+    )
+
+    is_active = request.data.get(
+        "is_active",
+        hero_media.is_active,
+    )
+
+    image = request.FILES.get("image")
+    video = request.FILES.get("video")
+
+    if not title:
+        return Response(
+            {"message": "Le titre est obligatoire."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    if media_type not in ["image", "video"]:
+        return Response(
+            {
+                "message": (
+                    "media_type doit être 'image' ou 'video'."
+                )
+            },
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    if media_type == "image" and image:
+        allowed_extensions = [
+            ".jpg",
+            ".jpeg",
+            ".png",
+            ".webp",
+        ]
+
+        filename = image.name.lower()
+
+        if not any(
+            filename.endswith(extension)
+            for extension in allowed_extensions
+        ):
+            return Response(
+                {
+                    "message": (
+                        "Format image invalide."
+                    )
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        hero_media.image = image
+
+    if media_type == "video" and video:
+        allowed_extensions = [
+            ".mp4",
+            ".webm",
+            ".mov",
+        ]
+
+        filename = video.name.lower()
+
+        if not any(
+            filename.endswith(extension)
+            for extension in allowed_extensions
+        ):
+            return Response(
+                {
+                    "message": (
+                        "Format vidéo invalide."
+                    )
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        hero_media.video = video
+
+    hero_media.title = title
+    hero_media.media_type = media_type
+    hero_media.order = order or 0
+    hero_media.is_active = parse_boolean(
+        is_active,
+        hero_media.is_active,
+    )
+
+    hero_media.save()
+
+    serializer = HeroMediaSerializer(
+        hero_media,
+        context={"request": request},
+    )
+
+    return Response(
+        {
+            "message": "Média Hero modifié avec succès.",
+            "data": serializer.data,
+        },
+        status=status.HTTP_200_OK,
+    )
+
+
+@api_view(["DELETE"])
+@permission_classes([IsAuthenticated])
+def hero_media_delete(request, pk):
+    if not is_admin_user(request):
+        return Response(
+            {"message": "Accès refusé. Compte admin requis."},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+
+    try:
+        hero_media = HeroMedia.objects.get(pk=pk)
+    except HeroMedia.DoesNotExist:
+        return Response(
+            {"message": "Média Hero introuvable."},
+            status=status.HTTP_404_NOT_FOUND,
+        )
+
+    hero_media.delete()
+
+    return Response(
+        {
+            "message": "Média Hero supprimé avec succès."
+        }
+    )

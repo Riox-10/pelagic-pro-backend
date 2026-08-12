@@ -99,3 +99,33 @@ class CatalogueFile(models.Model):
 
     def __str__(self):
         return self.title
+class HeroMedia(models.Model):
+    MEDIA_TYPE_CHOICES = [
+        ("image", "Image"),
+        ("video", "Video"),
+    ]
+
+    title = models.CharField(max_length=150)
+    media_type = models.CharField(
+        max_length=20,
+        choices=MEDIA_TYPE_CHOICES,
+    )
+    image = models.ImageField(
+        upload_to="hero/images/",
+        blank=True,
+        null=True,
+    )
+    video = models.FileField(
+        upload_to="hero/videos/",
+        blank=True,
+        null=True,
+    )
+    order = models.PositiveIntegerField(default=0)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["order", "-created_at"]
+
+    def __str__(self):
+        return f"{self.title} - {self.media_type}"

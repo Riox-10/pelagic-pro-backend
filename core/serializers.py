@@ -8,6 +8,7 @@ from .models import (
     CompanyFact,
     CompanyImage,
     CatalogueFile,
+    HeroMedia,
 )
 
 
@@ -170,5 +171,53 @@ class CatalogueFileSerializer(serializers.ModelSerializer):
 
         if obj.file:
             return obj.file.url
+
+        return ""
+
+
+class HeroMediaSerializer(serializers.ModelSerializer):
+    image_url = serializers.SerializerMethodField()
+    video_url = serializers.SerializerMethodField()
+
+    class Meta:
+        model = HeroMedia
+        fields = [
+            "id",
+            "title",
+            "media_type",
+            "image",
+            "video",
+            "image_url",
+            "video_url",
+            "is_active",
+            "order",
+            "created_at",
+        ]
+        read_only_fields = [
+            "id",
+            "image_url",
+            "video_url",
+            "created_at",
+        ]
+
+    def get_image_url(self, obj):
+        request = self.context.get("request")
+
+        if obj.image and request:
+            return request.build_absolute_uri(obj.image.url)
+
+        if obj.image:
+            return obj.image.url
+
+        return ""
+
+    def get_video_url(self, obj):
+        request = self.context.get("request")
+
+        if obj.video and request:
+            return request.build_absolute_uri(obj.video.url)
+
+        if obj.video:
+            return obj.video.url
 
         return ""

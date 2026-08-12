@@ -1,7 +1,15 @@
 # Register your models here.
 
 from django.contrib import admin
-from .models import Product, Certificate, ContactMessage, GalleryImage, CompanyFact, CompanyImage
+from .models import (
+    Product,
+    Certificate,
+    ContactMessage,
+    GalleryImage,
+    CompanyFact,
+    CompanyImage,
+    HeroMedia,
+)
 
 @admin.register(ContactMessage)
 class ContactMessageAdmin(admin.ModelAdmin):
@@ -33,4 +41,20 @@ class CompanyImageAdmin(admin.ModelAdmin):
     list_display = ("title", "order", "is_active", "created_at")
     list_filter = ("is_active", "created_at")
     search_fields = ("title", "alt")
+    ordering = ("order", "-created_at")
+@admin.register(HeroMedia)
+class HeroMediaAdmin(admin.ModelAdmin):
+    list_display = (
+        "title",
+        "media_type",
+        "order",
+        "is_active",
+        "created_at",
+    )
+    list_filter = (
+        "media_type",
+        "is_active",
+        "created_at",
+    )
+    search_fields = ("title",)
     ordering = ("order", "-created_at")
